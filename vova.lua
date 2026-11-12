@@ -1,38 +1,32 @@
--- ROCKET ESP Template for Delta
--- Создано для RIVALS / универсального использования
-
+-- ROCKET ESP (FIXED VERSION)
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
 
--- Настройки
-local ESP_COLOR = Color3.fromRGB(255, 0, 0) -- Красный цвет для врагов
-local ESP_ENABLED = false
-local ESP_OBJECTS = {}
+-- Удаляем старые сломанные меню, если они остались в памяти
+if LocalPlayer:FindFirstChild("PlayerGui") then
+    local oldMenu = LocalPlayer.PlayerGui:FindFirstChild("RocketESP_Menu")
+    if oldMenu then oldMenu:Destroy() end
+end
 
--- ========================
--- 1. СОЗДАНИЕ МЕНЮ
--- ========================
+-- Создаем интерфейс
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "RocketESP_Menu"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- Основной фрейм
 local MainFrame = Instance.new("Frame")
 MainFrame.Size = UDim2.new(0, 200, 0, 100)
-MainFrame.Position = UDim2.new(0, 20, 0, 20)
-MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-MainFrame.BorderSizePixel = 0
+MainFrame.Position = UDim2.new(0.5, -100, 0, 50) -- По центру сверху
+MainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+MainFrame.BorderSizePixel = 2
+MainFrame.BorderColor3 = Color3.fromRGB(255, 255, 255)
 MainFrame.Active = true
-MainFrame.Draggable = true -- Позволяет перетаскивать меню
+MainFrame.Draggable = true -- Меню можно таскать мышкой/пальцем
 MainFrame.Parent = ScreenGui
 
--- Заголовок
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 30)
-Title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+Title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 Title.BorderSizePixel = 0
 Title.Text = "ROCKET ESP"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -40,10 +34,9 @@ Title.Font = Enum.Font.SourceSansBold
 Title.TextSize = 18
 Title.Parent = MainFrame
 
--- Кнопка включения/выключения
 local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Size = UDim2.new(0.8, 0, 0, 40)
-ToggleBtn.Position = UDim2.new(0.1, 0, 0.4, 0)
+ToggleBtn.Position = UDim2.new(0.1, 0, 0.5, 0)
 ToggleBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 ToggleBtn.BorderSizePixel = 0
 ToggleBtn.Text = "ESP: OFF"
@@ -52,92 +45,54 @@ ToggleBtn.Font = Enum.Font.SourceSansBold
 ToggleBtn.TextSize = 16
 ToggleBtn.Parent = MainFrame
 
--- ========================
--- 2. ЛОГИКА ESP
--- ========================
+-- Логика
+local isEspOn = false
+
 local function ClearESP()
-    for _, obj in pairs(ESP_OBJECTS) do
-        if obj and obj.Parent then
-            obj:Destroy()
-        end
-    end
-    ESP_OBJECTS = {}
-end
-
-local function CreateESP(player)
-    if player == LocalPlayer then return end
-    
-    local function ApplyHighlight(character)
-        if not character then return end
-        
-        -- Удаляем старый highlight, если есть
-        local oldHighlight = character:FindFirstChild("RocketESP_Highlight")
-        if oldHighlight then oldHighlight:Destroy() end
-        
-        -- Создаём Highlight (виден сквозь стены)
-        local highlight = Instance.new("Highlight")
-        highlight.Name = "RocketESP_Highlight"
-        highlight.FillColor = ESP_COLOR
-        highlight.FillTransparency = 0.5
-        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-        highlight.OutlineTransparency = 0
-        highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop -- Ключевой параметр: всегда сверху
-        highlight.Parent = character
-        
-        table.insert(ESP_OBJECTS, highlight)
-    end
-    
-    -- Если персонаж уже есть
-    if player.Character then
-        ApplyHighlight(player.Character)
-    end
-    
-    -- Отслеживаем появление/смерть персонажа
-    player.CharacterAdded:Connect(function(char)
-        if ESP_ENABLED then
-            task.wait(0.5) -- Небольшая задержка для загрузки
-            ApplyHighlight(char)
-        end
-    end)
-end
-
-local function EnableESP()
-    ESP_ENABLED = true
-    ToggleBtn.Text = "ESP: ON"
-    ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
-    
-    -- Применяем ко всем текущим игрокам
     for _, player in pairs(Players:GetPlayers()) do
-        CreateESP(player)
-    end
-    
-    -- Слушаем новых игроков
-    Players.PlayerAdded:Connect(function(player)
-        if ESP_ENABLED then
-            CreateESP(player)
+        if player.Character then
+            local hl = player.Character:FindFirstChild("RocketHL")
+            if hl then hl:Destroy() end
         end
-    end)
+    end
 end
 
-local function DisableESP()
-    ESP_ENABLED = false
-    ToggleBtn.Text = "ESP: OFF"
-    ToggleBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-    ClearESP()
+local function ApplyESP()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            if not player.Character:FindFirstChild("RocketHL") then
+                local hl = Instance.new("Highlight")
+                hl.Name = "RocketHL"
+                hl.FillColor = Color3.fromRGB(255, 0, 0)
+                hl.FillTransparency = 0.3
+                hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                hl.Parent = player.Character
+            end
+        end
+    end
 end
 
--- Обработчик кнопки
+-- Кнопка
 ToggleBtn.MouseButton1Click:Connect(function()
-    if ESP_ENABLED then
-        DisableESP()
+    isEspOn = not isEspOn
+    
+    if isEspOn then
+        ToggleBtn.Text = "ESP: ON"
+        ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        ApplyESP()
     else
-        EnableESP()
-end
+        ToggleBtn.Text = "ESP: OFF"
+        ToggleBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+        ClearESP()
+    end
 end)
 
--- ========================
--- 3. ОЧИСТКА ПРИ ВЫХОДЕ
--- ========================
--- При смерти/респавне можно добавить повторное применение, 
--- но Highlight сам привязывается к персонажу.
-print("ROCKET ESP Loaded. Menu created.")
+-- Обновление при респавне игроков
+task.spawn(function()
+    while task.wait(1) do
+        if isEspOn then
+            ApplyESP()
+        end
+    end
+end)
